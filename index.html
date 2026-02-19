@@ -31,7 +31,11 @@
 
         <!-- Main Area -->
         <div class="p-6">
-            <label class="block text-sm font-medium text-slate-600 mb-2 text-center sm:text-left">Inhalt der Zwischenablage</label>
+            <div class="flex justify-between items-end mb-2">
+                <label class="block text-sm font-medium text-slate-600">Inhalt der Zwischenablage</label>
+                <span id="char-count" class="text-xs font-mono text-slate-400 bg-slate-100 px-2 py-1 rounded">0 Zeichen</span>
+            </div>
+            
             <textarea 
                 id="clipboard-input" 
                 class="w-full h-64 p-4 text-slate-700 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none transition-all placeholder:text-slate-400"
@@ -83,14 +87,22 @@
         const clearBtn = document.getElementById('clear-btn');
         const connectionDot = document.getElementById('connection-dot');
         const connectionText = document.getElementById('connection-text');
+        const charCount = document.getElementById('char-count');
         const toast = document.getElementById('toast');
+
+        // Update Character Count
+        const updateCharCount = () => {
+            const length = input.value.length;
+            charCount.innerText = `${length} Zeichen`;
+        };
 
         // Sync from Database
         onValue(clipboardRef, (snapshot) => {
             const data = snapshot.val();
-            // Nur updaten, wenn das Feld nicht gerade vom User fokussiert ist (verhindert Cursor-Sprünge beim Tippen)
+            // Nur updaten, wenn das Feld nicht gerade vom User fokussiert ist
             if (data !== null && document.activeElement !== input) {
                 input.value = data;
+                updateCharCount();
             }
             // Update UI status
             connectionDot.classList.remove('bg-slate-300');
@@ -103,6 +115,9 @@
             connectionDot.classList.add('bg-red-500');
             connectionText.innerText = "Verbindungsfehler";
         });
+
+        // Listen for typing
+        input.addEventListener('input', updateCharCount);
 
         // Save to Database
         const saveData = () => {
@@ -119,7 +134,6 @@
                 await navigator.clipboard.writeText(input.value);
                 showToast("In Zwischenablage kopiert!");
             } catch (err) {
-                // Fallback für ältere Browser oder unsichere Umgebungen
                 input.select();
                 document.execCommand('copy');
                 showToast("Kopiert!");
