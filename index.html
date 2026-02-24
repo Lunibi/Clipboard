@@ -47,7 +47,7 @@
                     <i data-lucide="copy" class="w-5 h-5"></i>
                     Kopieren
                 </button>
-                <button id="save-btn" class="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl transition-all active:scale-95">
+                <button id="save-btn" class="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white font-semibold py-3 px-6 rounded-xl transition-all active:scale-95">
                     <i data-lucide="send" class="w-5 h-5"></i>
                     Senden
                 </button>
@@ -86,35 +86,50 @@
         const charCount = document.getElementById('char-count');
         const toast = document.getElementById('toast');
 
-        const updateCharCount = () => {
+        let lastSyncedValue = ""; // Speicher für den Cloud-Status
+
+        const updateUIState = () => {
             charCount.innerText = `${input.value.length} Zeichen`;
+            
+            // Wenn der aktuelle Text ungleich dem Cloud-Text ist: Hellblau (Änderung vorhanden)
+            if (input.value !== lastSyncedValue) {
+                saveBtn.classList.remove('bg-slate-800', 'hover:bg-slate-900');
+                saveBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+            } else {
+                // Wenn alles synchron ist: Dunkelblau (wie Kopieren-Button)
+                saveBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                saveBtn.classList.add('bg-slate-800', 'hover:bg-slate-900');
+            }
         };
 
-        // Sync von Cloud
         onValue(clipboardRef, (snapshot) => {
             const data = snapshot.val();
-            if (data !== null && document.activeElement !== input) {
-                input.value = data;
-                updateCharCount();
+            if (data !== null) {
+                // Nur updaten, wenn der User nicht tippt
+                if (document.activeElement !== input) {
+                    input.value = data;
+                }
+                lastSyncedValue = data; // Cloud-Stand merken
+                updateUIState();
             }
             connectionDot.className = "w-2 h-2 rounded-full bg-green-500";
             connectionText.innerText = "Synchronisiert";
             connectionText.className = "text-xs text-green-600 uppercase tracking-wider font-semibold";
-        }, (error) => {
-            connectionDot.className = "w-2 h-2 rounded-full bg-red-500";
-            connectionText.innerText = "Verbindungsfehler";
         });
 
-        input.addEventListener('input', updateCharCount);
+        input.addEventListener('input', updateUIState);
 
-        // Senden Button
         saveBtn.addEventListener('click', () => {
-            set(clipboardRef, input.value)
-                .then(() => showToast("In Cloud gespeichert!"))
+            const newValue = input.value;
+            set(clipboardRef, newValue)
+                .then(() => {
+                    lastSyncedValue = newValue; // Nach Senden ist das der neue Cloud-Stand
+                    updateUIState();
+                    showToast("In Cloud gespeichert!");
+                })
                 .catch(() => showToast("Fehler beim Speichern"));
         });
 
-        // Kopieren Button
         copyBtn.addEventListener('click', async () => {
             try {
                 await navigator.clipboard.writeText(input.value);
@@ -124,10 +139,9 @@
             }
         });
 
-        // Leeren Button (Nur lokal)
         clearBtn.addEventListener('click', () => {
             input.value = "";
-            updateCharCount();
+            updateUIState();
             input.focus();
             showToast("Eingabe geleert");
         });
@@ -138,7 +152,6 @@
             setTimeout(() => toast.classList.replace('opacity-100', 'opacity-0'), 2000);
         }
 
-        // Icons initialisieren
         window.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
         });
