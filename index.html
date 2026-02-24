@@ -15,7 +15,6 @@
 <body class="bg-slate-50 min-h-screen flex flex-col items-center p-4 sm:p-8">
 
     <div class="w-full max-w-2xl bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <!-- Header -->
         <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-white">
             <div>
                 <h1 class="text-xl font-bold text-slate-800">Clipboard Sync</h1>
@@ -24,16 +23,18 @@
                     <span id="connection-text" class="text-xs text-slate-500 uppercase tracking-wider font-semibold">Verbinde...</span>
                 </div>
             </div>
-            <button id="clear-btn" class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
-                <i data-lucide="trash-2" class="w-5 h-5"></i>
-            </button>
         </div>
 
-        <!-- Main Area -->
         <div class="p-6">
-            <div class="flex justify-between items-end mb-2">
+            <div class="flex justify-between items-center mb-3">
                 <label class="block text-sm font-medium text-slate-600">Inhalt der Zwischenablage</label>
-                <span id="char-count" class="text-xs font-mono text-slate-400 bg-slate-100 px-2 py-1 rounded">0 Zeichen</span>
+                <div class="flex items-center gap-3">
+                    <button id="clear-btn" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100" title="Eingabe leeren">
+                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                        Leeren
+                    </button>
+                    <span id="char-count" class="text-xs font-mono text-slate-400 bg-slate-100 px-2 py-1 rounded">0 Zeichen</span>
+                </div>
             </div>
             
             <textarea 
@@ -53,18 +54,15 @@
             </div>
         </div>
 
-        <!-- Notification -->
         <div id="toast" class="fixed bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 bg-slate-900 text-white rounded-full text-sm font-medium shadow-lg opacity-0 transition-opacity pointer-events-none z-50">
             Text kopiert!
         </div>
     </div>
 
-    <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-        // Konfiguration aus deinem Screenshot
         const firebaseConfig = {
             apiKey: "AIzaSyCeBP2kuPaq_5NVpCpJMsfeZMwwBhX3s3c",
             authDomain: "clipboard-e5682.firebaseapp.com",
@@ -99,12 +97,10 @@
         // Sync from Database
         onValue(clipboardRef, (snapshot) => {
             const data = snapshot.val();
-            // Nur updaten, wenn das Feld nicht gerade vom User fokussiert ist
             if (data !== null && document.activeElement !== input) {
                 input.value = data;
                 updateCharCount();
             }
-            // Update UI status
             connectionDot.classList.remove('bg-slate-300');
             connectionDot.classList.add('bg-green-500');
             connectionText.innerText = "Synchronisiert";
@@ -119,7 +115,7 @@
         // Listen for typing
         input.addEventListener('input', updateCharCount);
 
-        // Save to Database
+        // Save to Database (Der Senden-Button)
         const saveData = () => {
             set(clipboardRef, input.value)
                 .then(() => showToast("Gesendet!"))
@@ -140,20 +136,13 @@
             }
         });
 
-        
-       // Nur lokales Feld leeren (ohne Cloud-Sync und ohne Bestätigung)
-clearBtn.addEventListener('click', () => {
-    // 1. Eingabefeld leeren
-    input.value = "";
-    
-    // 2. Zeichenzähler auf 0 setzen
-    updateCharCount();
-    
-    // 3. Fokus wieder auf das Feld setzen (optional, für schnellere Neueingabe)
-    input.focus();
-    
-    showToast("Eingabe geleert");
-});
+        // Leeren: Nur lokales Feld leeren, nicht die Cloud
+        clearBtn.addEventListener('click', () => {
+            input.value = "";
+            updateCharCount();
+            input.focus();
+            showToast("Eingabe geleert");
+        });
 
         // Utils
         function showToast(msg) {
@@ -163,11 +152,15 @@ clearBtn.addEventListener('click', () => {
         }
 
         // Initialize Icons
-        window.addEventListener('load', () => {
+        function initIcons() {
             if (typeof lucide !== 'undefined') {
                 lucide.createIcons();
             }
-        });
+        }
+
+        window.addEventListener('load', initIcons);
+        // Auch nach dem Klicken auf Leeren sicherstellen, dass Icons da sind (falls nötig)
+        clearBtn.addEventListener('click', initIcons);
     </script>
 </body>
 </html>
