@@ -9,6 +9,7 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
         body { font-family: 'Inter', sans-serif; }
+        .archive-item:hover .item-actions { opacity: 1; }
     </style>
 </head>
 <body class="bg-slate-50 min-h-screen flex flex-col items-center p-4 sm:p-8">
@@ -23,34 +24,38 @@
                     <span id="connection-text" class="text-xs text-slate-500 uppercase tracking-wider font-semibold">Verbinde...</span>
                 </div>
             </div>
+            <span id="char-count" class="text-xs font-mono text-slate-400 bg-slate-100 px-2 py-1 rounded">0 Zeichen</span>
         </div>
 
         <div class="p-6">
-            <div class="flex justify-between items-center mb-3">
-                <label class="block text-sm font-medium text-slate-600">Inhalt der Zwischenablage</label>
-                <div class="flex items-center gap-3">
-                    <button id="clear-btn" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100">
-                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-                        Leeren
-                    </button>
-                    <span id="char-count" class="text-xs font-mono text-slate-400 bg-slate-100 px-2 py-1 rounded">0 Zeichen</span>
-                </div>
-            </div>
-            
             <textarea 
                 id="clipboard-input" 
                 class="w-full h-64 p-4 text-slate-700 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none transition-all placeholder:text-slate-400"
                 placeholder="Text hier einfügen..."></textarea>
             
-            <div class="grid grid-cols-2 gap-4 mt-6">
-                <button id="copy-btn" class="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white font-semibold py-3 px-6 rounded-xl transition-all active:scale-95">
-                    <i data-lucide="copy" class="w-5 h-5"></i>
+            <div class="grid grid-cols-3 gap-3 mt-6">
+                <button id="copy-btn" class="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white font-semibold py-3 px-4 rounded-xl transition-all active:scale-95 text-sm">
+                    <i data-lucide="copy" class="w-4 h-4"></i>
                     Kopieren
                 </button>
-                <button id="save-btn" class="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white font-semibold py-3 px-6 rounded-xl transition-all active:scale-95">
-                    <i data-lucide="send" class="w-5 h-5"></i>
+                <button id="save-btn" class="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white font-semibold py-3 px-4 rounded-xl transition-all active:scale-95 text-sm">
+                    <i data-lucide="send" class="w-4 h-4"></i>
                     Senden
                 </button>
+                <button id="clear-btn-main" class="flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white font-semibold py-3 px-4 rounded-xl transition-all active:scale-95 text-sm">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    Leeren
+                </button>
+            </div>
+        </div>
+
+        <div class="border-t border-slate-100 bg-slate-50/50 p-6">
+            <h2 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4 flex items-center gap-2">
+                <i data-lucide="history" class="w-4 h-4"></i>
+                Archiv
+            </h2>
+            <div id="archive-list" class="space-y-2">
+                <p id="archive-empty" class="text-center text-slate-400 text-xs py-4 italic">Noch keine kopierten Texte vorhanden</p>
             </div>
         </div>
 
@@ -80,36 +85,67 @@
         const input = document.getElementById('clipboard-input');
         const saveBtn = document.getElementById('save-btn');
         const copyBtn = document.getElementById('copy-btn');
-        const clearBtn = document.getElementById('clear-btn');
+        const clearBtn = document.getElementById('clear-btn-main');
+        const archiveList = document.getElementById('archive-list');
+        const archiveEmpty = document.getElementById('archive-empty');
         const connectionDot = document.getElementById('connection-dot');
         const connectionText = document.getElementById('connection-text');
         const charCount = document.getElementById('char-count');
         const toast = document.getElementById('toast');
 
-        let lastSyncedValue = ""; // Speicher für den Cloud-Status
+        let lastSyncedValue = "";
 
         const updateUIState = () => {
             charCount.innerText = `${input.value.length} Zeichen`;
-            
-            // Wenn der aktuelle Text ungleich dem Cloud-Text ist: Hellblau (Änderung vorhanden)
             if (input.value !== lastSyncedValue) {
-                saveBtn.classList.remove('bg-slate-800', 'hover:bg-slate-900');
-                saveBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                saveBtn.classList.replace('bg-slate-800', 'bg-blue-600');
+                saveBtn.classList.replace('hover:bg-slate-900', 'hover:bg-blue-700');
             } else {
-                // Wenn alles synchron ist: Dunkelblau (wie Kopieren-Button)
-                saveBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
-                saveBtn.classList.add('bg-slate-800', 'hover:bg-slate-900');
+                saveBtn.classList.replace('bg-blue-600', 'bg-slate-800');
+                saveBtn.classList.replace('hover:bg-blue-700', 'hover:bg-slate-900');
             }
         };
+
+        // Archiv-Funktion
+        function addToArchive(text) {
+            if (!text.trim()) return;
+            archiveEmpty.classList.add('hidden');
+            
+            const div = document.createElement('div');
+            div.className = "archive-item flex items-center justify-between gap-4 p-3 bg-white border border-slate-200 rounded-lg group hover:border-blue-200 transition-all";
+            
+            div.innerHTML = `
+                <span class="text-sm text-slate-600 truncate flex-1 font-mono">${text}</span>
+                <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button class="copy-small p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors" title="Erneut kopieren">
+                        <i data-lucide="copy" class="w-4 h-4"></i>
+                    </button>
+                    <button class="delete-small p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors" title="Entfernen">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            `;
+
+            // Buttons im Archiv funktionsfähig machen
+            div.querySelector('.copy-small').addEventListener('click', () => {
+                navigator.clipboard.writeText(text);
+                showToast("Erneut kopiert!");
+            });
+
+            div.querySelector('.delete-small').addEventListener('click', () => {
+                div.remove();
+                if (archiveList.children.length <= 1) archiveEmpty.classList.remove('hidden');
+            });
+
+            archiveList.prepend(div);
+            lucide.createIcons();
+        }
 
         onValue(clipboardRef, (snapshot) => {
             const data = snapshot.val();
             if (data !== null) {
-                // Nur updaten, wenn der User nicht tippt
-                if (document.activeElement !== input) {
-                    input.value = data;
-                }
-                lastSyncedValue = data; // Cloud-Stand merken
+                if (document.activeElement !== input) input.value = data;
+                lastSyncedValue = data;
                 updateUIState();
             }
             connectionDot.className = "w-2 h-2 rounded-full bg-green-500";
@@ -120,20 +156,22 @@
         input.addEventListener('input', updateUIState);
 
         saveBtn.addEventListener('click', () => {
-            const newValue = input.value;
-            set(clipboardRef, newValue)
-                .then(() => {
-                    lastSyncedValue = newValue; // Nach Senden ist das der neue Cloud-Stand
-                    updateUIState();
-                    showToast("In Cloud gespeichert!");
-                })
-                .catch(() => showToast("Fehler beim Speichern"));
+            set(clipboardRef, input.value).then(() => {
+                lastSyncedValue = input.value;
+                updateUIState();
+                showToast("In Cloud gespeichert!");
+            });
         });
 
         copyBtn.addEventListener('click', async () => {
+            if (!input.value) return;
             try {
-                await navigator.clipboard.writeText(input.value);
-                showToast("Kopiert!");
+                const textToCopy = input.value;
+                await navigator.clipboard.writeText(textToCopy);
+                addToArchive(textToCopy); // Ins Archiv schieben
+                input.value = "";          // Eingabefeld leeren
+                updateUIState();
+                showToast("Kopiert & Archiviert");
             } catch (err) {
                 showToast("Fehler beim Kopieren");
             }
